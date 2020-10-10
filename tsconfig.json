@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "sourceMap": true
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

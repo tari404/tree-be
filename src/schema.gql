@@ -1,0 +1,64 @@
+scalar Date
+
+interface Node {
+  id: ID!
+}
+
+type LeafConnection {
+  nodes: [Leaf]
+  totalCount: Int!
+}
+
+type Leaf implements Node {
+  id: ID!
+  name: String!
+  isStartNode: Boolean!
+  isEndNode: Boolean!
+  prev: Leaf
+  next: [Leaf]
+}
+
+type StemConnection {
+  nodes: [Stem]
+  totalCount: Int!
+}
+
+type Stem implements Node {
+  id: ID!
+  title: String!
+  origin: Leaf!
+  rootOrigin: Leaf!
+  body: String!
+}
+
+type Post implements Node {
+  id: ID!
+  createdAt: Date!
+  abstract: String!
+  stems: StemConnection!
+  leaves: LeafConnection!
+}
+
+type Query {
+  post(id: ID): Post
+}
+
+input leafInput {
+  name: String!
+}
+
+input growInput {
+  originLeafID: ID
+  title: String!
+  body: String!
+  leaves: [leafInput]
+}
+
+input createPostInput {
+  specifyCreatedAt: Date
+  stems: [growInput!]!
+}
+
+type Mutation {
+  createPost(input: createPostInput): Post
+}
