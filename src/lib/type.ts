@@ -8,7 +8,7 @@ export type ID = string
 export type DateStored = number
 
 export interface LeafConnection {
-  nodes: Leaf[]
+  nodes: Dynamic<Leaf[]>
   totalCount: number
 }
 
@@ -17,20 +17,20 @@ export interface Leaf {
   name: string
   isStartNode: boolean
   isEndNode: boolean
-  prev: Leaf
-  next: Leaf[]
+  prev: Dynamic<Leaf>
+  next: Dynamic<Leaf[]>
 }
 
 export interface StemConnection {
-  nodes: Stem[]
+  nodes: Dynamic<Stem[]>
   totalCount: number
 }
 
 export interface Stem {
   id: ID
   title: string
-  origin: Leaf
-  rootOrigin: Leaf
+  origin: Dynamic<Leaf>
+  rootOrigin: Dynamic<Leaf>
   body: string
 }
 
