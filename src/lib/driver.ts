@@ -10,7 +10,7 @@ export const createDriver = () => {
   ;(async () => {
     const s = driver.session()
     const rootID = await s
-      .run('OPTIONAL MATCH (root: RootLeaf { id: "_rootleaf" }) RETURN root.id')
+      .run('OPTIONAL MATCH (root:RootLeaf) RETURN root.id')
       .then((result) => {
         return result.records[0].get('root.id')
       })
@@ -20,7 +20,7 @@ export const createDriver = () => {
 
       for (const label of ['Post', 'Stem', 'Leaf']) {
         await s.run(
-          `CREATE CONSTRAINT unique_uuid_${label} IF NOT EXISTS ON (node: ${label}) ASSERT node.id IS UNIQUE`
+          `CREATE CONSTRAINT unique_uuid_${label} IF NOT EXISTS ON (node:${label}) ASSERT node.id IS UNIQUE`
         )
         const installed = await s
           .run(
@@ -37,7 +37,7 @@ RETURN installed
           console.log(`Successfully add uuid for label: ${label}`)
         }
       }
-      await s.run('CREATE (root: RootLeaf { id: "_rootleaf" })')
+      await s.run('CREATE (root:RootLeaf:Leaf { name: "ROOT_LEAF" })')
     }
     s.close()
   })()

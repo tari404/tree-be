@@ -1,6 +1,7 @@
 type MaybeAsync<T> = T | Promise<T>
 type MaybeFunctional<T> = T | ((...args: any[]) => T)
 
+type Optional<T> = T | null
 type Dynamic<T> = MaybeFunctional<MaybeAsync<T>>
 
 export type ID = string
@@ -9,7 +10,7 @@ export type DateStored = number
 
 export interface LeafConnection {
   nodes: Dynamic<Leaf[]>
-  totalCount: number
+  totalCount: Dynamic<number>
 }
 
 export interface Leaf {
@@ -23,7 +24,7 @@ export interface Leaf {
 
 export interface StemConnection {
   nodes: Dynamic<Stem[]>
-  totalCount: number
+  totalCount: Dynamic<number>
 }
 
 export interface Stem {

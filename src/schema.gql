@@ -56,7 +56,8 @@ input createPostInput {
 }
 
 type Query {
-  post(id: ID): Post
+  posts(limit: Int): [Post]
+  post(id: ID!): Post
 }
 
 type Mutation {
