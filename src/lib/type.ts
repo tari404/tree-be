@@ -6,7 +6,7 @@ type Dynamic<T> = MaybeFunctional<MaybeAsync<T>>
 
 export type ID = string
 
-export type DateStored = number
+export type DateStored = string
 
 export interface LeafConnection {
   nodes: Dynamic<Leaf[]>
@@ -30,17 +30,13 @@ export interface StemConnection {
 export interface Stem {
   id: ID
   title: string
-  origin: Dynamic<Leaf>
-  rootOrigin: Dynamic<Leaf>
   body: string
 }
 
 export interface Post {
   id: ID
-  createdAt: DateStored
-  abstract: String
-  stems: Dynamic<StemConnection>
-  leaves: Dynamic<LeafConnection>
+  day: DateStored
+  // stems: Dynamic<StemConnection>
 }
 
 export interface LeafInput {
@@ -54,7 +50,10 @@ export interface GrowInput {
   leaves: LeafInput[]
 }
 
-export interface CreatePostInput {
-  specifyCreatedAt?: DateStored
-  stems: GrowInput[]
+export interface createStemInput {
+  parentID?: ID
+  title?: string
+  flowering: boolean
+  tags: string[]
+  body: string
 }

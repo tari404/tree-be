@@ -9,35 +9,22 @@ export const createDriver = () => {
   const driver = neo4j.driver(uri, neo4j.auth.basic(user, password))
   ;(async () => {
     const s = driver.session()
-    const rootID = await s
-      .run('OPTIONAL MATCH (root:RootLeaf) RETURN root.id')
+    const version = await s
+      .run('OPTIONAL MATCH (root:Root) RETURN root.version')
       .then((result) => {
-        return result.records[0].get('root.id')
+        return result.records[0].get('root.version')
       })
 
-    if (!rootID) {
+    if (!version) {
       console.log('Initialize database...')
 
-      for (const label of ['Post', 'Stem', 'Leaf']) {
-        await s.run(
-          `CREATE CONSTRAINT unique_uuid_${label} IF NOT EXISTS ON (node:${label}) ASSERT node.id IS UNIQUE`
-        )
-        const installed = await s
-          .run(
-            `
-CALL apoc.uuid.install('${label}', { uuidProperty: 'id' })
-YIELD installed
-RETURN installed
-`
-          )
-          .then((result) => {
-            return result.records[0].get('installed')
-          })
-        if (installed) {
-          console.log(`Successfully add uuid for label: ${label}`)
-        }
-      }
-      await s.run('CREATE (root:RootLeaf:Leaf { name: "ROOT_LEAF" })')
+      await s.run(`
+        CREATE CONSTRAINT unique_left_title IF NOT EXISTS
+        ON (n:Leaf)
+        ASSERT n.title IS UNIQUE
+      `)
+
+      await s.run('CREATE (r:Root { version: "1.0.0" })')
     }
     s.close()
   })()

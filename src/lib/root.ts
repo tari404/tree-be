@@ -1,5 +1,9 @@
 import { Driver, Node } from 'neo4j-driver'
-import { CreatePostInput, ID, Leaf, Post, Stem } from './type'
+import { createStemInput, ID, Post, Stem } from './type'
+
+const inlineLeafRegExp = /\[((?:\[(?:\\.|[^\[\]\\])*\]|\\.|`[^`]*`|[^\[\]\\`])*?)\]\(\s*(@leaf)(?:\s+("(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)))?\s*\)/g
+
+const query = (array: string[]) => array.join('\n')
 
 export class Root {
   private driver: Driver
@@ -11,60 +15,38 @@ export class Root {
   // Parse
   toPost(node: Node): Post {
     const p = node.properties as any
-    const id = p.id
     return {
-      id,
-      createdAt: p.createdAt,
-      abstract: '...', // TODO
-      stems: {
-        nodes: () => this.stemsOfPost({ postID: id }),
-        totalCount: () => this.count(`(:Post { id: "${id}" })-[:HAS]->(:Stem)`),
-      },
-      leaves: {
-        nodes: () => this.leavesOfPost({ postID: id }),
-        totalCount: () =>
-          this.count(`(:Post { id: "${id}" })-[:HAS]->()-[:ARRIVED]->(:Leaf)`),
-      },
-    }
-  }
-  toLeaf(node: Node): Leaf {
-    const p = node.properties as any
-    return {
-      id: p.id,
-      name: p.name || '',
-      // TODO
-      isStartNode: false,
-      isEndNode: false,
-      prev: () => this.emptyLeaf(),
-      next: () => Promise.all([this.emptyLeaf()]),
+      id: node.identity.toString(10),
+      day: Intl.DateTimeFormat('utc', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+      }).format(p.day * 86400000),
+      // stems: {
+      //   nodes: () => this.stemsOfPost({ postID: id }),
+      //   totalCount: () => this.count(`(:Post { id: "${id}" })-[:HAS]->(:Stem)`),
+      // },
     }
   }
 
-  async count(match: string): Promise<number> {
-    const s = this.driver.session()
-    const count = await s
-      .run(`MATCH ${match} RETURN count(*) AS count`)
-      .then((result) => {
-        return result.records[0].get('count').toNumber()
-      })
-    s.close()
-    return count
-  }
+  //   async count(match: string): Promise<number> {
+  //     const s = this.driver.session()
+  //     const count = await s
+  //       .run(`MATCH ${match} RETURN count(*) AS count`)
+  //       .then((result) => {
+  //         return result.records[0].get('count').toNumber()
+  //       })
+  //     s.close()
+  //     return count
+  //   }
 
   // Query
   async posts({ limit = 30 }: { limit: number }): Promise<Post[]> {
     const s = this.driver.session()
     const posts = await s
-      .run(
-        `
-MATCH (p:Post)
-RETURN p
-LIMIT toInteger($limit)
-  `,
-        {
-          limit,
-        }
-      )
+      .run(query(['MATCH (p:Post) RETURN p', 'LIMIT toInteger($limit)']), {
+        limit,
+      })
       .then((result) => {
         return result.records.map((record) => record.get('p') as Node)
       })
@@ -75,120 +57,157 @@ LIMIT toInteger($limit)
   async post({ id }: { id: ID }): Promise<Post> {
     const s = this.driver.session()
     const post = await s
-      .run(
-        `
-MATCH (p:Post { id: $id })
-RETURN p
-  `,
-        {
-          id,
-        }
-      )
+      .run(query(['MATCH (p:Post) WHERE ID(p) = toInteger($id)', 'RETURN p']), {
+        id,
+      })
       .then((result) => {
         return result.records[0].get('p') as Node
-      })
-      .catch(() => {
-        throw new Error('Post not found')
       })
     s.close()
     return this.toPost(post)
   }
 
-  async stemsOfPost({ postID }: { postID: ID }): Promise<Stem[]> {
+  async stem({ id }: { id: ID }): Promise<Stem> {
     const s = this.driver.session()
-    const stems = await s
-      .run(
-        `
-MATCH (:Post { id: $id })-[:HAS]->(s: Stem)
-MATCH (l:Leaf)-[:EXTEND]->(s)
-RETURN s, l
-  `,
-        {
-          id: postID,
-        }
-      )
+    const stem = await s
+      .run('MATCH (s:Stem) WHERE ID(s) = toInteger($id) RETURN s', {
+        id,
+      })
       .then((result) => {
-        return result.records.map((resord) => ({
-          stem: resord.get('s') as Node,
-          origin: resord.get('l') as Node,
-        }))
+        return result.records[0].get('s') as Node
       })
     s.close()
-    return stems.map(({ stem, origin }) => {
-      const p = stem.properties as any
-      return {
-        id: p.id,
-        title: p.title,
-        origin: this.toLeaf(origin),
-        rootOrigin: () => this.emptyLeaf(), // TODO
-        body: p.body,
-      }
-    })
-  }
-
-  async leavesOfPost({ postID }: { postID: ID }): Promise<Leaf[]> {
-    const s = this.driver.session()
-    const leaves = await s
-      .run(
-        `
-MATCH (:Post { id: $id })-[:HAS]->(:Stem)-[:ARRIVED]->(l:Leaf)
-RETURN l
-  `,
-        {
-          id: postID,
-        }
-      )
-      .then((result) => {
-        return result.records.map((resord) => resord.get('l') as Node)
-      })
-    s.close()
-    return leaves.map((node) => this.toLeaf(node))
-  }
-
-  async emptyLeaf(): Promise<Leaf> {
+    const p = stem.properties as any
     return {
-      id: 'test-id',
-      name: 'name',
-      isStartNode: false,
-      isEndNode: false,
-      prev: () => this.emptyLeaf(),
-      next: () => Promise.all([this.emptyLeaf()]),
+      id: stem.identity.toString(10),
+      title: p.title,
+      body: p.body,
     }
   }
 
   // Mutation
-  async createPost({ input }: { input: CreatePostInput }): Promise<Post> {
+
+  async createStem({ input }: { input: createStemInput }): Promise<Stem> {
+    const today = Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    }).format(Date.now())
+    const day = Math.round(new Date(today + 'Z').getTime() / 86400000)
+
+    if (!!input.parentID === !!input.title) {
+      throw new Error('参数 parentID 及 title 必须且只能提供其中一个！')
+    }
+
+    let body = input.body
+    const toCreateLeaves = body.match(inlineLeafRegExp)
+    const leaves: string[] = []
+    if (toCreateLeaves) {
+      for (const leaf of toCreateLeaves) {
+        const leafTitle = leaf.replace(/\]\(.+\)$/, '').replace(/^\[/, '')
+        leaves.push(leafTitle)
+      }
+    }
+
     const s = this.driver.session()
-    const createdAt = input.specifyCreatedAt || Date.now()
-    const pID = await s
-      .run(
-        `
-CREATE (p:Post { createdAt: $createdAt, id: apoc.create.uuid() }) WITH p
-UNWIND $stems AS stem
-OPTIONAL MATCH (ol:Leaf { id: stem.originLeafID })
-CALL apoc.when(ol IS NOT NULL,
-  'RETURN ol AS o',
-  'MATCH (o:RootLeaf) RETURN DISTINCT o',
-  { ol: ol }
-) YIELD value
-WITH value.o AS o, stem, p
-CREATE (s:Stem { title: stem.title, body: stem.body })
-CREATE (p)-[:HAS]->(s)<-[:EXTEND]-(o)
-WITH *
-UNWIND stem.leaves AS leaf
-CREATE (l:Leaf { name: leaf.name })
-CREATE (s)-[:ARRIVED]->(l)<-[:GROW]-(o)
-RETURN p.id AS pid
-  `,
-        {
-          createdAt,
-          stems: input.stems,
+    const txc = s.beginTransaction()
+    let id: string
+    try {
+      // Create new Stem
+      id = await txc
+        .run(
+          query([
+            'CREATE (s:Stem { flowering: $flowering })',
+            'MERGE (p:Post { day: $day })',
+            'CREATE (p)-[:HAS]->(s)',
+            'RETURN ID(s) as id',
+          ]),
+          {
+            flowering: !!input.flowering,
+            day,
+          }
+        )
+        .then((result) => result.records[0].get('id') as string)
+
+      // Link Tags
+      if (input.tags.length) {
+        await txc.run(
+          query([
+            'MATCH (s:Stem) WHERE ID(s) = toInteger($id)',
+            'UNWIND $tags AS tag',
+            'MERGE (t:Tag { name: tag })',
+            'CREATE (t)-[:TAG]->(s)',
+            'RETURN t',
+          ]),
+          {
+            id,
+            tags: input.tags,
+          }
+        )
+      }
+
+      // Create new Leaves (if existed) and get their IDs
+      if (leaves.length) {
+        const createdLeaves = await txc
+          .run(
+            query([
+              'MATCH (s:Stem) WHERE ID(s) = toInteger($id)',
+              'UNWIND $leaves AS leaf',
+              'CREATE (s)-[:GROW]->(l:Leaf { title: leaf })',
+              'RETURN ID(l) AS id, leaf',
+            ]),
+            {
+              id,
+              leaves,
+            }
+          )
+          .then((result) =>
+            result.records.map((record) => ({
+              id: record.get('id').toNumber() as number,
+              title: record.get('leaf') as string,
+            }))
+          )
+        for (const leaf of createdLeaves) {
+          body = body.replace(
+            leaf.title + '](@leaf',
+            leaf.title + '](@leaf:' + leaf.id
+          )
         }
+      }
+
+      // Link parent Leaf (if existed)
+      let title = input.title || ''
+      if (typeof input.parentID !== 'undefined') {
+        title = await txc
+          .run(
+            query([
+              'MATCH (ol:Leaf), (s:Stem)',
+              `WHERE ID(ol) = toInteger($pid) AND ID(s) = toInteger($id)`,
+              'CREATE (ol)-[:EXTEND]->(s)',
+              'RETURN ol.title AS title',
+            ]),
+            { id, pid: input.parentID }
+          )
+          .then((result) => result.records[0].get('title') as string)
+      }
+
+      // Set properties of new Stem
+      await txc.run(
+        query([
+          'MATCH (s:Stem) WHERE ID(s) = toInteger($id)',
+          'SET s.body = $body, s.title = $title',
+        ]),
+        { id, body, title }
       )
-      .then((result) => {
-        return result.records[0].get('pid')
-      })
-    s.close()
-    return this.post({ id: pID })
+
+      await txc.commit()
+    } catch (err) {
+      console.log(err.message || err)
+      await txc.rollback()
+      throw err
+    } finally {
+      await s.close()
+    }
+    return this.stem({ id })
   }
 }
