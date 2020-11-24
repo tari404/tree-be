@@ -1,21 +1,50 @@
 scalar Day
+scalar Date
 
 interface Node {
   id: ID!
 }
 
-type Post implements Node {
+type Tag implements Node {
   id: ID!
-  day: Day!
-  # stems: [Stem]!
+  name: String!
+  tagCount: Int!
 }
 
 type Stem implements Node {
   id: ID!
+  createAt: Date!
+  flowering: Boolean!
+  title: String!
+  tags: [Tag]!
   body: String!
 }
 
+type StemConnection {
+  nodes: [Stem]!
+  totalCount: Int!
+}
+
+type Leaf implements Node {
+  id: ID!
+  createAt: Date!
+  title: String!
+}
+
+type LeafConnection {
+  nodes: [Leaf]!
+  totalCount: Int!
+}
+
+type Post implements Node {
+  id: ID!
+  day: Day!
+  stems: StemConnection!
+  leaves: LeafConnection!
+}
+
 input createStemInput {
+  specifiedDay: Day
   parentID: ID
   title: String
   flowering: Boolean
@@ -26,6 +55,8 @@ input createStemInput {
 type Query {
   posts(limit: Int): [Post]
   post(id: ID!): Post
+
+  tags(limit: Int): [Tag]
 }
 
 type Mutation {
