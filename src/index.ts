@@ -1,12 +1,25 @@
 import * as express from 'express'
+import * as http from 'http'
 import { graphqlHTTP } from 'express-graphql'
-import { buildSchema } from 'graphql'
+import { GraphQLTypeResolver } from 'graphql'
+import * as graphqlTools from 'graphql-tools'
+
 import { createDriver } from './lib/driver'
 import { Root } from './lib/root'
+import { NodeStored } from './lib/type'
 
 import schemaText from './schema.gql'
 
-const schema = buildSchema(schemaText)
+const schema = graphqlTools.makeExecutableSchema({
+  typeDefs: schemaText,
+  resolvers: {
+    Node: {
+      __resolveType: function (a) {
+        return a.__typename
+      } as GraphQLTypeResolver<NodeStored, http.IncomingMessage>,
+    },
+  },
+})
 
 const driver = createDriver()
 

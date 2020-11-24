@@ -1,5 +1,5 @@
 import { Driver, Node, Integer } from 'neo4j-driver'
-import { createStemInput, ID, Leaf, Post, Stem, Tag } from './type'
+import { createStemInput, ID, Leaf, NodeStored, Post, Stem, Tag } from './type'
 
 const inlineLeafRegExp = /\[((?:\[(?:\\.|[^\[\]\\])*\]|\\.|`[^`]*`|[^\[\]\\`])*?)\]\(\s*(@leaf)(?:\s+("(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)))?\s*\)/g
 
@@ -18,6 +18,7 @@ export class Root {
     const p = node.properties as any
     const id = node.identity.toString(10)
     return {
+      __typename: 'Tag',
       id,
       name: p.name as string,
       tagCount: count || 0,
@@ -28,6 +29,7 @@ export class Root {
     const p = node.properties as any
     const id = node.identity.toString(10)
     return {
+      __typename: 'Post',
       id,
       day: Intl.DateTimeFormat('utc', {
         year: 'numeric',
@@ -56,6 +58,7 @@ export class Root {
     const p = node.properties as any
     const id = node.identity.toString(10)
     return {
+      __typename: 'Stem',
       id,
       createAt: p.createAt as number,
       flowering: !!p.flowering,
@@ -69,6 +72,7 @@ export class Root {
     const p = node.properties as any
     const id = node.identity.toString(10)
     return {
+      __typename: 'Leaf',
       id,
       createAt: p.createAt as number,
       title: p.title as string,
@@ -163,6 +167,36 @@ export class Root {
   }
 
   // Query
+
+  async node({ id }: { id: ID }): Promise<NodeStored> {
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const node = await s
+      .run(query(['MATCH (n) WHERE ID(n) = toInteger($id)', 'RETURN n']), {
+        id,
+      })
+      .then((result) => {
+        if (!result.records.length) {
+          throw new Error('ID不存在！')
+        }
+        return result.records[0].get('n') as Node
+      })
+    s.close()
+    switch (node.labels[0]) {
+      case 'Tag':
+        return this.toTag(node)
+      case 'Stem':
+        return this.toStem(node)
+      case 'Leaf':
+        return this.toLeaf(node)
+      case 'Post':
+        return this.toPost(node)
+      default:
+        return {
+          id: node.identity.toString(10),
+          __typename: '',
+        }
+    }
+  }
 
   async posts({ limit = 30 }: { limit: number }): Promise<Post[]> {
     const s = this.driver.session({ defaultAccessMode: 'READ' })

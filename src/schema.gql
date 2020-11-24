@@ -53,6 +53,8 @@ input createStemInput {
 }
 
 type Query {
+  node(id: ID!): Node
+
   posts(limit: Int): [Post]
   post(id: ID!): Post
 

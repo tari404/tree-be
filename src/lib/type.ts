@@ -9,14 +9,17 @@ export type DayInput = number
 export type DayStored = string
 export type Date = number
 
-export interface Tag {
+export interface NodeStored {
   id: ID
+  __typename: string
+}
+
+export interface Tag extends NodeStored {
   name: string
   tagCount: number
 }
 
-export interface Stem {
-  id: ID
+export interface Stem extends NodeStored {
   createAt: Date
   flowering: boolean
   title: string
@@ -29,8 +32,7 @@ export interface StemConnection {
   totalCount: Dynamic<number>
 }
 
-export interface Leaf {
-  id: ID
+export interface Leaf extends NodeStored {
   createAt: Date
   title: string
 }
@@ -45,8 +47,7 @@ export interface LeafConnection {
   totalCount: Dynamic<number>
 }
 
-export interface Post {
-  id: ID
+export interface Post extends NodeStored {
   day: DayStored
   stems: Dynamic<StemConnection>
   leaves: Dynamic<LeafConnection>
