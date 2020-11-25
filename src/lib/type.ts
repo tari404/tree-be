@@ -25,6 +25,8 @@ export interface Stem extends NodeStored {
   title: string
   tags: Dynamic<Tag[]>
   body: string
+  originLeaf: Dynamic<Leaf | null>
+  leaves: Dynamic<LeafConnection>
 }
 
 export interface StemConnection {
@@ -35,11 +37,8 @@ export interface StemConnection {
 export interface Leaf extends NodeStored {
   createAt: Date
   title: string
-}
-
-export interface LeafConnection {
-  nodes: Dynamic<Leaf[]>
-  totalCount: Dynamic<number>
+  originStem: Dynamic<Stem>
+  stems: Dynamic<StemConnection>
 }
 
 export interface LeafConnection {

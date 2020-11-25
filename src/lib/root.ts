@@ -70,6 +70,12 @@ export class Root {
       title: p.title as string,
       tags: () => this.tagsOfStem(id),
       body: p.body as string,
+      originLeaf: () => this.originOfStem(id),
+      leaves: {
+        nodes: () => this.leavesOfStem(id),
+        totalCount: () =>
+          this.count(`(l:Leaf)-[:EXTEND]->(:Stem) WHERE ID(l) = ${id}`),
+      },
     }
   }
 
@@ -81,6 +87,12 @@ export class Root {
       id,
       createAt: p.createAt as number,
       title: p.title as string,
+      originStem: () => this.originOfLeaf(id),
+      stems: {
+        nodes: () => this.stemsOfLeaf(id),
+        totalCount: () =>
+          this.count(`(l:Leaf)-[:EXTEND]->(:Stem) WHERE ID(l) = ${id}`),
+      },
     }
   }
 
@@ -151,6 +163,78 @@ export class Root {
       )
     s.close()
     return tags.map((item) => this.toTag(item.node, item.count))
+  }
+
+  async originOfStem(sid: ID): Promise<Leaf | null> {
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const leaf = await s
+      .run(
+        query([
+          'MATCH (l:Leaf)-[:EXTEND]->(s:Stem)',
+          'WHERE ID(s) = toInteger($sid)',
+          'RETURN DISTINCT l',
+        ]),
+        { sid }
+      )
+      .then((result) => {
+        if (result.records.length) {
+          return result.records[0].get('l') as Node
+        } else {
+          return null
+        }
+      })
+    s.close()
+    return leaf ? this.toLeaf(leaf) : null
+  }
+
+  async leavesOfStem(sid: ID): Promise<Leaf[]> {
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const leaves = await s
+      .run(
+        query([
+          'MATCH (s:Stem)-[:GROW]->(l:Leaf)',
+          'WHERE ID(s) = toInteger($sid)',
+          'RETURN l',
+          'ORDER BY l.createAt',
+        ]),
+        { sid }
+      )
+      .then((result) => result.records.map((record) => record.get('l') as Node))
+    s.close()
+    return leaves.map((node) => this.toLeaf(node))
+  }
+
+  async originOfLeaf(lid: ID): Promise<Stem> {
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const stem = await s
+      .run(
+        query([
+          'MATCH (s:Stem)-[:GROW]->(l:Leaf)',
+          'WHERE ID(l) = toInteger($lid)',
+          'RETURN DISTINCT s',
+        ]),
+        { lid }
+      )
+      .then((result) => result.records[0].get('s') as Node)
+    s.close()
+    return this.toStem(stem)
+  }
+
+  async stemsOfLeaf(lid: ID): Promise<Stem[]> {
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const stems = await s
+      .run(
+        query([
+          'MATCH (l:Leaf)-[:EXTEND]->(s:Stem)',
+          'WHERE ID(l) = toInteger($lid)',
+          'RETURN s',
+          'ORDER BY s.createAt',
+        ]),
+        { lid }
+      )
+      .then((result) => result.records.map((record) => record.get('s') as Node))
+    s.close()
+    return stems.map((node) => this.toStem(node))
   }
 
   async count(match: string): Promise<number> {

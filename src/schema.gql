@@ -18,6 +18,8 @@ type Stem implements Node {
   title: String!
   tags: [Tag]!
   body: String!
+  originLeaf: Leaf
+  leaves: LeafConnection!
 }
 
 type StemConnection {
@@ -29,6 +31,8 @@ type Leaf implements Node {
   id: ID!
   createAt: Date!
   title: String!
+  originStem: Stem!
+  stems: StemConnection!
 }
 
 type LeafConnection {
