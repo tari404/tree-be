@@ -1,5 +1,14 @@
 import { Driver, Node, Integer } from 'neo4j-driver'
-import { createStemInput, ID, Leaf, NodeStored, Post, Stem, Tag } from './type'
+import {
+  createStemInput,
+  DayInput,
+  ID,
+  Leaf,
+  NodeStored,
+  Post,
+  Stem,
+  Tag,
+} from './type'
 
 const inlineLeafRegExp = /\[((?:\[(?:\\.|[^\[\]\\])*\]|\\.|`[^`]*`|[^\[\]\\`])*?)\]\(\s*(@leaf)(?:\s+("(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)))?\s*\)/g
 
@@ -31,11 +40,7 @@ export class Root {
     return {
       __typename: 'Post',
       id,
-      day: Intl.DateTimeFormat('utc', {
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-      }).format(p.day * 86400000),
+      day: p.day,
       stems: {
         nodes: () => this.stemsOfPost(id),
         totalCount: () =>
@@ -82,16 +87,13 @@ export class Root {
   // Helper
 
   async stem({ id }: { id: ID }): Promise<Stem> {
-    const s = this.driver.session()
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
     const stem = await s
       .run('MATCH (s:Stem) WHERE ID(s) = toInteger($id) RETURN s', {
         id,
       })
-      .then((result) => {
-        return result.records[0].get('s') as Node
-      })
+      .then((result) => result.records[0].get('s') as Node)
     s.close()
-    const p = stem.properties as any
     return this.toStem(stem)
   }
 
@@ -107,9 +109,7 @@ export class Root {
         ]),
         { pid }
       )
-      .then((result) => {
-        return result.records.map((record) => record.get('s') as Node)
-      })
+      .then((result) => result.records.map((record) => record.get('s') as Node))
     s.close()
     return stems.map((node) => this.toStem(node))
   }
@@ -126,9 +126,7 @@ export class Root {
         ]),
         { pid }
       )
-      .then((result) => {
-        return result.records.map((record) => record.get('l') as Node)
-      })
+      .then((result) => result.records.map((record) => record.get('l') as Node))
     s.close()
     return stems.map((node) => this.toLeaf(node))
   }
@@ -145,12 +143,12 @@ export class Root {
         ]),
         { sid }
       )
-      .then((result) => {
-        return result.records.map((record) => ({
+      .then((result) =>
+        result.records.map((record) => ({
           node: record.get('t') as Node,
           count: (record.get('count') as Integer).toNumber(),
         }))
-      })
+      )
     s.close()
     return tags.map((item) => this.toTag(item.node, item.count))
   }
@@ -159,9 +157,7 @@ export class Root {
     const s = this.driver.session({ defaultAccessMode: 'READ' })
     const count = await s
       .run(`MATCH ${match} RETURN COUNT(*) AS count`)
-      .then((result) => {
-        return (result.records[0].get('count') as Integer).toNumber()
-      })
+      .then((result) => (result.records[0].get('count') as Integer).toNumber())
     s.close()
     return count
   }
@@ -209,24 +205,38 @@ export class Root {
         ]),
         { limit }
       )
-      .then((result) => {
-        return result.records.map((record) => record.get('p') as Node)
-      })
+      .then((result) => result.records.map((record) => record.get('p') as Node))
     s.close()
     return posts.map((node) => this.toPost(node))
   }
 
-  async post({ id }: { id: ID }): Promise<Post> {
+  async post({ day }: { day: DayInput }): Promise<Post> {
     const s = this.driver.session({ defaultAccessMode: 'READ' })
     const post = await s
-      .run(query(['MATCH (p:Post) WHERE ID(p) = toInteger($id)', 'RETURN p']), {
-        id,
+      .run(query(['MATCH (p:Post { day: $day })', 'RETURN p']), {
+        day,
       })
-      .then((result) => {
-        return result.records[0].get('p') as Node
-      })
+      .then((result) => result.records[0].get('p') as Node)
     s.close()
     return this.toPost(post)
+  }
+
+  async matchedLeaves({ matching }: { matching: string }): Promise<Leaf[]> {
+    if (!matching) {
+      return []
+    }
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const leaves = await s
+      .run(
+        query([
+          'MATCH (l:Leaf)',
+          `WHERE l.title =~ "(?i).*${matching}.*"`,
+          'RETURN l',
+        ])
+      )
+      .then((result) => result.records.map((record) => record.get('l') as Node))
+    s.close()
+    return leaves.map((node) => this.toLeaf(node))
   }
 
   async tags({ limit = 30 }: { limit: number }): Promise<Tag[]> {
@@ -242,12 +252,36 @@ export class Root {
         ]),
         { limit }
       )
-      .then((result) => {
-        return result.records.map((record) => ({
+      .then((result) =>
+        result.records.map((record) => ({
           node: record.get('t') as Node,
           count: (record.get('count') as Integer).toNumber(),
         }))
-      })
+      )
+    s.close()
+    return tags.map((item) => this.toTag(item.node, item.count))
+  }
+
+  async matchedTags({ matching }: { matching: string }): Promise<Tag[]> {
+    if (!matching) {
+      return []
+    }
+    const s = this.driver.session({ defaultAccessMode: 'READ' })
+    const tags = await s
+      .run(
+        query([
+          'MATCH (t:Tag)',
+          `WHERE t.name =~ "(?i).*${matching}.*"`,
+          'WITH t, SIZE((t)-[]-()) AS count',
+          'RETURN t, count',
+        ])
+      )
+      .then((result) =>
+        result.records.map((record) => ({
+          node: record.get('t') as Node,
+          count: (record.get('count') as Integer).toNumber(),
+        }))
+      )
     s.close()
     return tags.map((item) => this.toTag(item.node, item.count))
   }
@@ -259,8 +293,10 @@ export class Root {
       year: 'numeric',
       month: 'numeric',
       day: 'numeric',
-    }).format(input.specifiedDay || Date.now())
-    const day = Math.round(new Date(today + 'Z').getTime() / 86400000)
+    }).format(Date.now())
+    const day =
+      input.specifiedDay ||
+      Math.round(new Date(today + 'Z').getTime() / 86400000)
 
     if (!!input.parentID === !!input.title) {
       throw new Error('参数 parentID 及 title 必须且只能提供其中一个！')

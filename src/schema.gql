@@ -56,9 +56,12 @@ type Query {
   node(id: ID!): Node
 
   posts(limit: Int): [Post]
-  post(id: ID!): Post
+  post(day: Day!): Post
+
+  matchedLeaves(matching: String!): [Leaf]
 
   tags(limit: Int): [Tag]
+  matchedTags(matching: String!): [Tag]
 }
 
 type Mutation {
