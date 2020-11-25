@@ -154,12 +154,25 @@ export class Resolver {
     return stems.map((node) => this.p!.toStem(node))
   }
 
-  async stems({ limit = 30 }: queryNodeOptions): Promise<Stem[]> {
+  stemsResolver(matching: string = '(s:Stem)') {
+    if (!/\(s:Stem.*\)/.test(matching)) {
+      throw new SyntaxError(`Invalid Stem matching statement: ${matching}!`)
+    }
+    return (options: queryNodeOptions) => ({
+      totalCount: () => this.count(matching),
+      nodes: () => this.stems(options, matching),
+    })
+  }
+
+  async stems(
+    { limit = 30 }: queryNodeOptions,
+    matching: string = '(s:Stem)'
+  ): Promise<Stem[]> {
     const s = this.d.session({ defaultAccessMode: 'READ' })
     const stems = await s
       .run(
         query([
-          'MATCH (s:Stem)',
+          `MATCH ${matching}`,
           'RETURN s',
           'ORDER BY s.createAt',
           'LIMIT toInteger($limit)',
@@ -177,42 +190,6 @@ export class Resolver {
       .run(
         query([
           'MATCH (s:Stem { flowering: true })',
-          'RETURN s',
-          'ORDER BY s.createAt',
-          'LIMIT toInteger($limit)',
-        ]),
-        { limit }
-      )
-      .then((result) => result.records.map((record) => record.get('s') as Node))
-    s.close()
-    return fruits.map((node) => this.p!.toStem(node))
-  }
-
-  async seeds({ limit = 30 }: queryNodeOptions): Promise<Stem[]> {
-    const s = this.d.session({ defaultAccessMode: 'READ' })
-    const seeds = await s
-      .run(
-        query([
-          'MATCH (s:Stem)',
-          'WHERE NOT (:Leaf)-[:EXTEND]->(s) AND (s)-[:GROW]->(:Leaf)',
-          'RETURN s',
-          'ORDER BY s.createAt',
-          'LIMIT toInteger($limit)',
-        ]),
-        { limit }
-      )
-      .then((result) => result.records.map((record) => record.get('s') as Node))
-    s.close()
-    return seeds.map((node) => this.p!.toStem(node))
-  }
-
-  async fruits({ limit = 30 }: queryNodeOptions): Promise<Stem[]> {
-    const s = this.d.session({ defaultAccessMode: 'READ' })
-    const fruits = await s
-      .run(
-        query([
-          'MATCH (s:Stem)',
-          'WHERE NOT (:Leaf)-[:EXTEND]->(s) AND NOT (s)-[:GROW]->(:Leaf)',
           'RETURN s',
           'ORDER BY s.createAt',
           'LIMIT toInteger($limit)',

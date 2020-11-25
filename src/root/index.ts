@@ -64,28 +64,14 @@ export class Root {
   async panel(): Promise<Panel> {
     return {
       posts: this.posts.bind(this),
-      stems: (options: queryNodeOptions) => ({
-        totalCount: () => this.r.count('(:Stem)'),
-        nodes: () => this.r.stems(options),
-      }),
-      flowers: (options: queryNodeOptions) => ({
-        totalCount: () => this.r.count('(:Stem { flowering: true })'),
-        nodes: () => this.r.flowers(options),
-      }),
-      seeds: (options: queryNodeOptions) => ({
-        totalCount: () =>
-          this.r.count(
-            '(s:Stem) WHERE NOT (:Leaf)-[:EXTEND]->(s) AND (s)-[:GROW]->(:Leaf)'
-          ),
-        nodes: () => this.r.seeds(options),
-      }),
-      fruits: (options: queryNodeOptions) => ({
-        totalCount: () =>
-          this.r.count(
-            '(s:Stem) WHERE NOT (:Leaf)-[:EXTEND]->(s) AND NOT (s)-[:GROW]->(:Leaf)'
-          ),
-        nodes: () => this.r.fruits(options),
-      }),
+      stems: this.r.stemsResolver(),
+      flowers: this.r.stemsResolver('(s:Stem { flowering: true })'),
+      seeds: this.r.stemsResolver(
+        '(s:Stem) WHERE NOT (:Leaf)-[:EXTEND]->(s) AND (s)-[:GROW]->(:Leaf)'
+      ),
+      fruits: this.r.stemsResolver(
+        '(s:Stem) WHERE NOT (:Leaf)-[:EXTEND]->(s) AND NOT (s)-[:GROW]->(:Leaf)'
+      ),
       leaves: (options: queryNodeOptions) => ({
         totalCount: () => this.r.count('(:Leaf)'),
         nodes: () => this.r.leaves(options),
