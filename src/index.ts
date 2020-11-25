@@ -5,7 +5,7 @@ import { GraphQLScalarType, GraphQLTypeResolver } from 'graphql'
 import * as graphqlTools from 'graphql-tools'
 
 import { createDriver } from './lib/driver'
-import { Root } from './lib/root'
+import { Root } from './root'
 import { NodeStored } from './lib/type'
 
 import schemaText from './schema.gql'

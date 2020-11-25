@@ -47,6 +47,15 @@ type Post implements Node {
   leaves: LeafConnection!
 }
 
+type Panel {
+  posts(limit: Int, earlyThan: Day, lateThan: Day): [Post]!
+  stems(limit: Int): StemConnection!
+  flowers(limit: Int): StemConnection!
+  seeds(limit: Int): StemConnection!
+  fruits(limit: Int): StemConnection!
+  leaves(limit: Int): LeafConnection!
+}
+
 input createStemInput {
   specifiedDay: Day
   parentID: ID
@@ -59,13 +68,15 @@ input createStemInput {
 type Query {
   node(id: ID!): Node
 
-  posts(limit: Int): [Post]
+  panel: Panel!
+
+  posts(limit: Int, earlyThan: Day, lateThan: Day): [Post]!
   post(day: Day!): Post
 
-  matchedLeaves(matching: String!): [Leaf]
+  matchedLeaves(matching: String!): [Leaf]!
 
-  tags(limit: Int): [Tag]
-  matchedTags(matching: String!): [Tag]
+  tags(limit: Int): [Tag]!
+  matchedTags(matching: String!): [Tag]!
 }
 
 type Mutation {

@@ -52,15 +52,13 @@ export interface Post extends NodeStored {
   leaves: Dynamic<LeafConnection>
 }
 
-export interface LeafInput {
-  name: string
-}
-
-export interface GrowInput {
-  originLeafID: ID
-  title: string
-  body: string
-  leaves: LeafInput[]
+export interface Panel {
+  posts: Dynamic<Post[]>
+  stems: Dynamic<StemConnection>
+  flowers: Dynamic<StemConnection>
+  seeds: Dynamic<StemConnection>
+  fruits: Dynamic<StemConnection>
+  leaves: Dynamic<LeafConnection>
 }
 
 export interface createStemInput {
@@ -70,4 +68,10 @@ export interface createStemInput {
   flowering: boolean
   tags: string[]
   body: string
+}
+
+export interface queryNodeOptions {
+  limit?: number
+  earlyThan?: DayInput
+  lateThan?: DayInput
 }
