@@ -1,5 +1,5 @@
 import * as express from 'express'
-import * as http from 'http'
+import http from 'http'
 import { graphqlHTTP } from 'express-graphql'
 import { GraphQLScalarType, GraphQLTypeResolver } from 'graphql'
 import * as graphqlTools from 'graphql-tools'
@@ -9,6 +9,7 @@ import { Root } from './root'
 import { NodeStored } from './lib/type'
 
 import schemaText from './schema.gql'
+import { setPwd } from './lib/auth'
 
 const DayScalarType = new GraphQLScalarType({
   name: 'Day',
@@ -76,6 +77,8 @@ const schema = graphqlTools.makeExecutableSchema({
 const driver = createDriver()
 
 const root = new Root(driver)
+
+setPwd(process.argv[2])
 
 const app = express()
 app.use(

@@ -2,11 +2,9 @@ import neo4j from 'neo4j-driver'
 
 // ** DEV **
 const uri = 'neo4j://localhost'
-const user = 'neo4j'
-const password = '12345678'
 
 export const createDriver = () => {
-  const driver = neo4j.driver(uri, neo4j.auth.basic(user, password))
+  const driver = neo4j.driver(uri)
   ;(async () => {
     const s = driver.session()
     const version = await s

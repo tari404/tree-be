@@ -1,4 +1,5 @@
 import { Driver, Node, Integer } from 'neo4j-driver'
+import http from 'http'
 import {
   createStemInput,
   DayInput,
@@ -11,6 +12,7 @@ import {
   Stem,
   Tag,
 } from '../lib/type'
+import { checkPwd } from '../lib/auth'
 import { Resolver } from './Resolver'
 import { Parser } from './Parser'
 
@@ -189,7 +191,14 @@ export class Root {
 
   // Mutation
 
-  async createStem({ input }: { input: createStemInput }): Promise<Stem> {
+  async createStem(
+    { input }: { input: createStemInput },
+    context: http.IncomingMessage
+  ): Promise<Stem> {
+    const valid = checkPwd(String(context.headers.password))
+    if (!valid) {
+      throw new Error('No Authority!')
+    }
     const today = Intl.DateTimeFormat(undefined, {
       year: 'numeric',
       month: 'numeric',
