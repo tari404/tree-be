@@ -81,6 +81,9 @@ const root = new Root(driver)
 setPwd(process.argv[2])
 
 const app = express()
+app.get('/', (_, res) => {
+  res.send('Hello!')
+})
 app.use(
   '/graphql',
   graphqlHTTP({
