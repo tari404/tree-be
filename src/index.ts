@@ -15,11 +15,12 @@ const DayScalarType = new GraphQLScalarType({
   name: 'Day',
   description: 'Date information of daily precision',
   serialize(value: number) {
-    return Intl.DateTimeFormat('utc', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    }).format(value * 86400000)
+    return new Date(value * 86400000)
+      .toISOString()
+      .substr(0, 10)
+      .split('-')
+      .map((n) => Number(n))
+      .join('-')
   },
   parseValue(value: string | number) {
     const date = new Date(value)
